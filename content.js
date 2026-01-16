@@ -141,6 +141,30 @@ function hideAll() {
   processElements();
 }
 
+// Inject early-hide CSS to prevent flash of spoilers
+function injectEarlyHideCSS() {
+  if (!config.enabled || !isDomainMatch() || config.selectors.length === 0) return;
+  
+  const style = document.createElement('style');
+  style.id = 'mhsh-early-hide';
+  style.textContent = config.selectors.map(s => {
+    try {
+      document.querySelector(s); // validate selector
+      return `${s} { visibility: hidden !important; }`;
+    } catch (e) {
+      return '';
+    }
+  }).join('\n');
+  
+  (document.head || document.documentElement).appendChild(style);
+}
+
+// Remove early-hide CSS (elements now have proper overlays)
+function removeEarlyHideCSS() {
+  const style = document.getElementById('mhsh-early-hide');
+  if (style) style.remove();
+}
+
 // Load config and initialize
 function init() {
   chrome.storage.local.get(['enabled', 'domains', 'selectors'], (result) => {
@@ -148,13 +172,18 @@ function init() {
     config.domains = result.domains || [];
     config.selectors = result.selectors || [];
     
+    // Inject CSS immediately to hide spoilers before they render
+    injectEarlyHideCSS();
+    
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => {
         processElements();
+        removeEarlyHideCSS();
         setupObserver();
       });
     } else {
       processElements();
+      removeEarlyHideCSS();
       setupObserver();
     }
   });
