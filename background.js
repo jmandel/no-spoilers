@@ -1,4 +1,15 @@
-// Mystery Hunt Spoiler Hider - Background Service Worker
+// No Spoilers - Background Service Worker
+
+// Default configuration for MIT Mystery Hunt 2025
+const DEFAULT_DOMAINS = [
+  'puzzmon.world',
+  '*.puzzmon.world'
+];
+
+const DEFAULT_SELECTORS = [
+  '[class*="copy-ribbon"]',
+  '#guess-history td:first-child'
+];
 
 // Initialize default config on install
 chrome.runtime.onInstalled.addListener(() => {
@@ -10,10 +21,10 @@ chrome.runtime.onInstalled.addListener(() => {
       updates.enabled = true;
     }
     if (result.domains === undefined) {
-      updates.domains = [];
+      updates.domains = DEFAULT_DOMAINS;
     }
     if (result.selectors === undefined) {
-      updates.selectors = [];
+      updates.selectors = DEFAULT_SELECTORS;
     }
     
     if (Object.keys(updates).length > 0) {
@@ -22,5 +33,4 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 
-// Log extension activity for debugging
-console.log('Mystery Hunt Spoiler Hider background script loaded');
+console.log('No Spoilers background script loaded');
