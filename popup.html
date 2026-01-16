@@ -173,18 +173,52 @@
     }
     
     .item-toggle {
+      position: relative;
+      width: 32px;
+      height: 18px;
+      background: #ccc;
+      border: none;
+      border-radius: 9px;
+      cursor: pointer;
+      margin-right: 8px;
+      transition: background 0.2s;
+    }
+    
+    .item-toggle::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 14px;
+      height: 14px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    
+    .item-toggle.enabled {
+      background: #1a1a1a;
+    }
+    
+    .item-toggle.enabled::after {
+      transform: translateX(14px);
+    }
+    
+    .item-delete {
       background: none;
       border: none;
+      color: #999;
       cursor: pointer;
       padding: 2px 6px;
       font-size: 14px;
       line-height: 1;
       border-radius: 4px;
-      margin-right: 4px;
+      margin-left: 4px;
     }
     
-    .item-toggle:hover {
-      background: #eee;
+    .item-delete:hover {
+      color: #dc3545;
+      background: #fee;
     }
     
 

@@ -78,8 +78,9 @@ function renderDomains() {
   
   list.innerHTML = config.domains.map((domain, i) => `
     <div class="item ${domain.enabled ? '' : 'disabled'}">
-      <button class="item-toggle" data-type="domain" data-index="${i}" title="${domain.enabled ? 'Disable' : 'Enable'}">${domain.enabled ? '✓' : '○'}</button>
+      <button class="item-toggle ${domain.enabled ? 'enabled' : ''}" data-type="domain" data-index="${i}" title="${domain.enabled ? 'Disable' : 'Enable'}"></button>
       <span class="item-text" title="${domain.value}">${domain.value}</span>
+      <button class="item-delete" data-type="domain" data-index="${i}" title="Delete">×</button>
     </div>
   `).join('');
 }
@@ -99,8 +100,9 @@ function renderSelectors() {
   
   list.innerHTML = config.selectors.map((selector, i) => `
     <div class="item ${selector.enabled ? '' : 'disabled'}">
-      <button class="item-toggle" data-type="selector" data-index="${i}" title="${selector.enabled ? 'Disable' : 'Enable'}">${selector.enabled ? '✓' : '○'}</button>
+      <button class="item-toggle ${selector.enabled ? 'enabled' : ''}" data-type="selector" data-index="${i}" title="${selector.enabled ? 'Disable' : 'Enable'}"></button>
       <span class="item-text" title="${selector.value}">${selector.value}</span>
+      <button class="item-delete" data-type="selector" data-index="${i}" title="Delete">×</button>
     </div>
   `).join('');
 }
@@ -186,6 +188,20 @@ async function toggleItem(type, index) {
   setTimeout(updateStatus, 100);
 }
 
+// Delete item
+async function deleteItem(type, index) {
+  if (type === 'domain') {
+    config.domains.splice(index, 1);
+    renderDomains();
+  } else if (type === 'selector') {
+    config.selectors.splice(index, 1);
+    renderSelectors();
+  }
+  
+  await saveConfig();
+  setTimeout(updateStatus, 100);
+}
+
 
 
 // Initialize popup
@@ -223,6 +239,10 @@ async function init() {
       const type = e.target.dataset.type;
       const index = parseInt(e.target.dataset.index);
       toggleItem(type, index);
+    } else if (e.target.classList.contains('item-delete')) {
+      const type = e.target.dataset.type;
+      const index = parseInt(e.target.dataset.index);
+      deleteItem(type, index);
     }
   });
   
