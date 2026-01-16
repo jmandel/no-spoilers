@@ -1,11 +1,49 @@
 // No Spoilers - Content Script
 
-// Hardcoded defaults - injected immediately before async storage load
+// Hardcoded defaults for immediate injection (before async storage load)
 const DEFAULT_DOMAINS = ['puzzmon.world', '*.puzzmon.world'];
 const DEFAULT_SELECTORS = [
   '[class*="copy-ribbon"] button',
   '#guess-history tr td:nth-child(1)'
 ];
+
+// Check domain match synchronously
+function checkDomainMatch(domains) {
+  const currentHost = window.location.hostname;
+  return domains.some(d => {
+    const domain = typeof d === 'string' ? d : d.value;
+    const enabled = typeof d === 'string' ? true : d.enabled;
+    if (!enabled) return false;
+    if (domain.startsWith('*.')) {
+      const suffix = domain.slice(1);
+      return currentHost.endsWith(suffix) || currentHost === domain.slice(2);
+    }
+    return currentHost === domain || currentHost.endsWith('.' + domain);
+  });
+}
+
+// Get enabled selectors as strings
+function getEnabledSelectors(selectors) {
+  return selectors
+    .filter(s => typeof s === 'string' ? true : s.enabled)
+    .map(s => typeof s === 'string' ? s : s.value);
+}
+
+// IMMEDIATE: Inject early-hide CSS before page renders
+(function() {
+  if (!checkDomainMatch(DEFAULT_DOMAINS)) return;
+  
+  const style = document.createElement('style');
+  style.id = 'mhsh-early-hide';
+  style.textContent = DEFAULT_SELECTORS.map(s => 
+    `${s} { opacity: 0 !important; }`
+  ).join('\n');
+  
+  // Inject into documentElement (exists even before head/body)
+  document.documentElement.appendChild(style);
+})();
+
+// === Main extension logic (runs after DOM ready) ===
 
 let config = {
   enabled: true,
@@ -13,47 +51,13 @@ let config = {
   selectors: DEFAULT_SELECTORS
 };
 
-let hiddenElements = new Map(); // element -> overlay
-let revealedElements = new Set(); // elements user has revealed (don't re-hide)
+let hiddenElements = new Map();
+let revealedElements = new Set();
 
-// Inject early-hide CSS IMMEDIATELY (before async storage)
-(function injectEarlyHideCSS() {
-  const currentHost = window.location.hostname;
-  const domainMatch = DEFAULT_DOMAINS.some(domain => {
-    if (domain.startsWith('*.')) {
-      const suffix = domain.slice(1);
-      return currentHost.endsWith(suffix) || currentHost === domain.slice(2);
-    }
-    return currentHost === domain || currentHost.endsWith('.' + domain);
-  });
-  
-  if (!domainMatch) return;
-  
-  const style = document.createElement('style');
-  style.id = 'mhsh-early-hide';
-  style.textContent = DEFAULT_SELECTORS.map(s => `${s} { visibility: hidden !important; }`).join('\n');
-  (document.head || document.documentElement).appendChild(style);
-})();
-
-// Check if current domain matches any configured domain pattern
 function isDomainMatch() {
-  const currentHost = window.location.hostname;
-  return config.domains.some(d => {
-    // Handle both old format (string) and new format ({value, enabled})
-    const domain = typeof d === 'string' ? d : d.value;
-    const enabled = typeof d === 'string' ? true : d.enabled;
-    if (!enabled) return false;
-    
-    // Support wildcards like *.example.com
-    if (domain.startsWith('*.')) {
-      const suffix = domain.slice(1); // .example.com
-      return currentHost.endsWith(suffix) || currentHost === domain.slice(2);
-    }
-    return currentHost === domain || currentHost.endsWith('.' + domain);
-  });
+  return checkDomainMatch(config.domains);
 }
 
-// Create reveal overlay for a hidden element
 function createOverlay(element) {
   const overlay = document.createElement('div');
   overlay.className = 'mhsh-overlay';
@@ -63,6 +67,7 @@ function createOverlay(element) {
   button.textContent = 'Reveal';
   button.addEventListener('click', (e) => {
     e.stopPropagation();
+    e.preventDefault();
     revealElement(element);
   });
   
@@ -70,80 +75,77 @@ function createOverlay(element) {
   return overlay;
 }
 
-// Hide an element and add overlay
 function hideElement(element) {
   if (hiddenElements.has(element)) return;
-  if (revealedElements.has(element)) return; // User already revealed this
-  if (element.closest('.mhsh-overlay')) return; // Don't hide our own overlays
+  if (revealedElements.has(element)) return;
+  if (element.closest('.mhsh-overlay')) return;
   
-  // Store original styles
   element.dataset.mhshOriginalPosition = element.style.position || '';
   
   const computedStyle = window.getComputedStyle(element);
-  
-  // Create wrapper if element isn't already relatively positioned
   if (computedStyle.position === 'static') {
     element.style.position = 'relative';
   }
   
-  // Hide content but maintain layout
-  element.classList.add('mhsh-hidden');
+  element.classList.add('mhsh-spoiler');
   
-  // Create and position overlay
   const overlay = createOverlay(element);
   element.appendChild(overlay);
   
   hiddenElements.set(element, overlay);
 }
 
-// Reveal a hidden element (permanently until page reload)
 function revealElement(element) {
   const overlay = hiddenElements.get(element);
   if (overlay) {
     overlay.remove();
   }
-  element.classList.remove('mhsh-hidden');
-  element.classList.add('mhsh-revealed'); // Override early-hide.css
+  element.classList.remove('mhsh-spoiler');
   element.style.position = element.dataset.mhshOriginalPosition || '';
   hiddenElements.delete(element);
-  revealedElements.add(element); // Remember this was revealed
+  revealedElements.add(element);
 }
 
-// Re-hide a revealed element
-function rehideElement(element) {
-  hideElement(element);
-}
-
-// Get enabled selectors as array of strings
-function getEnabledSelectors() {
-  return config.selectors
-    .filter(s => typeof s === 'string' ? true : s.enabled)
-    .map(s => typeof s === 'string' ? s : s.value);
-}
-
-// Process all elements matching current selectors
 function processElements() {
+  // Remove early-hide CSS now that we're taking over
+  const earlyStyle = document.getElementById('mhsh-early-hide');
+  if (earlyStyle) earlyStyle.remove();
+  
   if (!config.enabled || !isDomainMatch()) {
-    // Remove all overlays if disabled or wrong domain
     hiddenElements.forEach((overlay, element) => {
       revealElement(element);
     });
     return;
   }
   
-  const enabledSelectors = getEnabledSelectors();
+  const enabledSelectors = getEnabledSelectors(config.selectors);
+  if (enabledSelectors.length === 0) return;
+  
   const selectorString = enabledSelectors.join(', ');
-  if (!selectorString) return;
   
   try {
     const elements = document.querySelectorAll(selectorString);
     elements.forEach(el => hideElement(el));
   } catch (e) {
-    console.warn('MHSH: Invalid selector', e);
+    console.warn('No Spoilers: Invalid selector', e);
   }
 }
 
-// Set up MutationObserver for dynamic content
+function revealAll() {
+  hiddenElements.forEach((overlay, element) => {
+    revealElement(element);
+  });
+}
+
+function resetRevealed() {
+  revealedElements.clear();
+}
+
+function hideAll() {
+  processElements();
+}
+
+// MutationObserver for dynamic content
 let observer = null;
 function setupObserver() {
   if (observer) observer.disconnect();
@@ -151,7 +153,6 @@ function setupObserver() {
   observer = new MutationObserver((mutations) => {
     if (!config.enabled || !isDomainMatch()) return;
     
-    // Debounce processing
     clearTimeout(observer.timeout);
     observer.timeout = setTimeout(() => {
       processElements();
@@ -161,80 +162,6 @@ function setupObserver() {
   observer.observe(document.documentElement, {
     childList: true,
     subtree: true
-  });
-}
-
-// Reveal all elements (for toggle)
-function revealAll() {
-  hiddenElements.forEach((overlay, element) => {
-    revealElement(element);
-  });
-}
-
-// Clear revealed set (allow re-hiding)
-function resetRevealed() {
-  revealedElements.clear();
-}
-
-// Re-hide all (re-process)
-function hideAll() {
-  processElements();
-}
-
-// Update early-hide CSS with user's custom selectors
-function updateEarlyHideCSS() {
-  let style = document.getElementById('mhsh-early-hide');
-  
-  const enabledSelectors = getEnabledSelectors();
-  
-  if (!config.enabled || !isDomainMatch() || enabledSelectors.length === 0) {
-    if (style) style.remove();
-    return;
-  }
-  
-  if (!style) {
-    style = document.createElement('style');
-    style.id = 'mhsh-early-hide';
-    (document.head || document.documentElement).appendChild(style);
-  }
-  
-  style.textContent = enabledSelectors.map(s => {
-    try {
-      document.querySelector(s); // validate
-      return `${s} { visibility: hidden !important; }`;
-    } catch (e) {
-      return '';
-    }
-  }).join('\n');
-}
-
-// Remove early-hide CSS (elements now have proper overlays)
-function removeEarlyHideCSS() {
-  const style = document.getElementById('mhsh-early-hide');
-  if (style) style.remove();
-}
-
-// Load config and initialize
-function init() {
-  chrome.storage.local.get(['enabled', 'domains', 'selectors'], (result) => {
-    config.enabled = result.enabled !== false;
-    config.domains = result.domains || DEFAULT_DOMAINS;
-    config.selectors = result.selectors || DEFAULT_SELECTORS;
-    
-    // Update CSS with user's selectors (may differ from defaults)
-    updateEarlyHideCSS();
-    
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', () => {
-        processElements();
-        removeEarlyHideCSS();
-        setupObserver();
-      });
-    } else {
-      processElements();
-      removeEarlyHideCSS();
-      setupObserver();
-    }
   });
 }
 
@@ -252,8 +179,8 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
     config.selectors = changes.selectors.newValue || [];
   }
   
-  // Re-process: first reveal all, then re-hide with new config
   revealAll();
+  revealedElements.clear();
   processElements();
 });
 
@@ -275,5 +202,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   return true;
 });
+
+// Initialize
+function init() {
+  chrome.storage.local.get(['enabled', 'domains', 'selectors'], (result) => {
+    config.enabled = result.enabled !== false;
+    config.domains = result.domains || DEFAULT_DOMAINS;
+    config.selectors = result.selectors || DEFAULT_SELECTORS;
+    
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        processElements();
+        setupObserver();
+      });
+    } else {
+      processElements();
+      setupObserver();
+    }
+  });
+}
 
 init();
