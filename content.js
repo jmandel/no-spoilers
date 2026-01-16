@@ -1,13 +1,39 @@
-// Mystery Hunt Spoiler Hider - Content Script
+// No Spoilers - Content Script
+
+// Hardcoded defaults - injected immediately before async storage load
+const DEFAULT_DOMAINS = ['puzzmon.world', '*.puzzmon.world'];
+const DEFAULT_SELECTORS = [
+  '[class*="copy-ribbon"] button',
+  '#guess-history tr td:nth-child(1)'
+];
 
 let config = {
   enabled: true,
-  domains: [],
-  selectors: []
+  domains: DEFAULT_DOMAINS,
+  selectors: DEFAULT_SELECTORS
 };
 
 let hiddenElements = new Map(); // element -> overlay
 let revealedElements = new Set(); // elements user has revealed (don't re-hide)
+
+// Inject early-hide CSS IMMEDIATELY (before async storage)
+(function injectEarlyHideCSS() {
+  const currentHost = window.location.hostname;
+  const domainMatch = DEFAULT_DOMAINS.some(domain => {
+    if (domain.startsWith('*.')) {
+      const suffix = domain.slice(1);
+      return currentHost.endsWith(suffix) || currentHost === domain.slice(2);
+    }
+    return currentHost === domain || currentHost.endsWith('.' + domain);
+  });
+  
+  if (!domainMatch) return;
+  
+  const style = document.createElement('style');
+  style.id = 'mhsh-early-hide';
+  style.textContent = DEFAULT_SELECTORS.map(s => `${s} { visibility: hidden !important; }`).join('\n');
+  (document.head || document.documentElement).appendChild(style);
+})();
 
 // Check if current domain matches any configured domain pattern
 function isDomainMatch() {
@@ -141,22 +167,29 @@ function hideAll() {
   processElements();
 }
 
-// Inject early-hide CSS to prevent flash of spoilers
-function injectEarlyHideCSS() {
-  if (!config.enabled || !isDomainMatch() || config.selectors.length === 0) return;
+// Update early-hide CSS with user's custom selectors
+function updateEarlyHideCSS() {
+  let style = document.getElementById('mhsh-early-hide');
   
-  const style = document.createElement('style');
-  style.id = 'mhsh-early-hide';
+  if (!config.enabled || !isDomainMatch() || config.selectors.length === 0) {
+    if (style) style.remove();
+    return;
+  }
+  
+  if (!style) {
+    style = document.createElement('style');
+    style.id = 'mhsh-early-hide';
+    (document.head || document.documentElement).appendChild(style);
+  }
+  
   style.textContent = config.selectors.map(s => {
     try {
-      document.querySelector(s); // validate selector
+      document.querySelector(s); // validate
       return `${s} { visibility: hidden !important; }`;
     } catch (e) {
       return '';
     }
   }).join('\n');
-  
-  (document.head || document.documentElement).appendChild(style);
 }
 
 // Remove early-hide CSS (elements now have proper overlays)
@@ -168,12 +201,12 @@ function removeEarlyHideCSS() {
 // Load config and initialize
 function init() {
   chrome.storage.local.get(['enabled', 'domains', 'selectors'], (result) => {
-    config.enabled = result.enabled !== false; // default true
-    config.domains = result.domains || [];
-    config.selectors = result.selectors || [];
+    config.enabled = result.enabled !== false;
+    config.domains = result.domains || DEFAULT_DOMAINS;
+    config.selectors = result.selectors || DEFAULT_SELECTORS;
     
-    // Inject CSS immediately to hide spoilers before they render
-    injectEarlyHideCSS();
+    // Update CSS with user's selectors (may differ from defaults)
+    updateEarlyHideCSS();
     
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => {
