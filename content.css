@@ -1,8 +1,9 @@
 /* No Spoilers - Content Styles */
 
-/* Hidden spoiler: content invisible, overlay visible */
+/* Hidden spoiler: make element visible (override early-hide.css), but hide children */
 .mhsh-spoiler {
   position: relative !important;
+  opacity: 1 !important;
 }
 
 .mhsh-spoiler > *:not(.mhsh-overlay) {
@@ -20,6 +21,11 @@
 /* Revealed: override early-hide.css (which uses :where for 0 specificity) */
 .mhsh-revealed {
   opacity: 1 !important;
+}
+
+.mhsh-revealed > * {
+  opacity: 1 !important;
+  pointer-events: auto !important;
 }
 
 /* Overlay with reveal button */
