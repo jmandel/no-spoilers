@@ -10,6 +10,13 @@
   pointer-events: none !important;
 }
 
+/* Ensure overlay and its contents are always visible */
+.mhsh-overlay,
+.mhsh-overlay * {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
 /* Revealed: override early-hide.css (which uses :where for 0 specificity) */
 .mhsh-revealed {
   opacity: 1 !important;
