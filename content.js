@@ -98,6 +98,7 @@ function revealElement(element) {
     overlay.remove();
   }
   element.classList.remove('mhsh-hidden');
+  element.classList.add('mhsh-revealed'); // Override early-hide.css
   element.style.position = element.dataset.mhshOriginalPosition || '';
   hiddenElements.delete(element);
   revealedElements.add(element); // Remember this was revealed

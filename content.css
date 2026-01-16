@@ -8,6 +8,11 @@
   visibility: hidden !important;
 }
 
+/* Override early-hide.css when element has been revealed */
+.mhsh-revealed {
+  visibility: visible !important;
+}
+
 .mhsh-overlay {
   position: absolute !important;
   top: 0 !important;
