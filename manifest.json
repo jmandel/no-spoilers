@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Mystery Hunt Spoiler Hider",
+  "name": "No Spoilers",
   "version": "1.0.0",
-  "description": "Hide spoilers on MIT Mystery Hunt pages with configurable selectors",
+  "description": "Hide page elements until you're ready to see them",
   "permissions": [
     "storage",
     "activeTab",

@@ -28,7 +28,7 @@ function createOverlay(element) {
   
   const button = document.createElement('button');
   button.className = 'mhsh-reveal-btn';
-  button.textContent = '👁 Reveal Spoiler';
+  button.textContent = 'Reveal';
   button.addEventListener('click', (e) => {
     e.stopPropagation();
     revealElement(element);
