@@ -8,7 +8,7 @@ const DEFAULT_DOMAINS = [
 
 const DEFAULT_SELECTORS = [
   '[class*="copy-ribbon"]',
-  '#guess-history td:first-child'
+  '#guess-history tr td:nth-child(1)'
 ];
 
 // Initialize default config on install
