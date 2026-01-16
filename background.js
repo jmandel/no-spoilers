@@ -7,7 +7,7 @@ const DEFAULT_DOMAINS = [
 ];
 
 const DEFAULT_SELECTORS = [
-  '[class*="copy-ribbon"]',
+  '[class*="copy-ribbon"] button',
   '#guess-history tr td:nth-child(1)'
 ];
 
