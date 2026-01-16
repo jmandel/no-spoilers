@@ -10,7 +10,11 @@
 
 /* Override early-hide.css when element has been revealed */
 .mhsh-revealed,
-.mhsh-revealed * {
+.mhsh-revealed *,
+button.mhsh-revealed,
+td.mhsh-revealed,
+[class*="copy-ribbon"] button.mhsh-revealed,
+#guess-history tr td.mhsh-revealed {
   visibility: visible !important;
 }
 
@@ -31,7 +35,12 @@
   visibility: visible !important;
 }
 
-.mhsh-overlay * {
+.mhsh-overlay,
+.mhsh-overlay *,
+.mhsh-overlay button,
+[class*="copy-ribbon"] .mhsh-overlay,
+[class*="copy-ribbon"] .mhsh-overlay *,
+[class*="copy-ribbon"] .mhsh-overlay button {
   visibility: visible !important;
 }
 
