@@ -1,0 +1,56 @@
+/* Mystery Hunt Spoiler Hider - Content Styles */
+
+.mhsh-hidden {
+  position: relative !important;
+}
+
+.mhsh-hidden > *:not(.mhsh-overlay) {
+  visibility: hidden !important;
+}
+
+.mhsh-overlay {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(128, 128, 128, 0.1),
+    rgba(128, 128, 128, 0.1) 10px,
+    rgba(128, 128, 128, 0.2) 10px,
+    rgba(128, 128, 128, 0.2) 20px
+  ) !important;
+  border: 2px dashed rgba(128, 128, 128, 0.5) !important;
+  border-radius: 4px !important;
+  min-height: 40px !important;
+  z-index: 10000 !important;
+  visibility: visible !important;
+}
+
+.mhsh-reveal-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+  border: none !important;
+  padding: 8px 16px !important;
+  border-radius: 20px !important;
+  cursor: pointer !important;
+  font-size: 14px !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-weight: 500 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+  transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+  visibility: visible !important;
+}
+
+.mhsh-reveal-btn:hover {
+  transform: scale(1.05) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+.mhsh-reveal-btn:active {
+  transform: scale(0.98) !important;
+}
