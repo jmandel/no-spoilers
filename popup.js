@@ -2,17 +2,26 @@
 
 let config = {
   enabled: true,
-  domains: [],
-  selectors: []
+  domains: [],      // [{value: string, enabled: boolean}]
+  selectors: []     // [{value: string, enabled: boolean}]
 };
+
+// Migrate old format (string[]) to new format ({value, enabled}[])
+function migrateToNewFormat(arr) {
+  if (!arr || arr.length === 0) return [];
+  if (typeof arr[0] === 'string') {
+    return arr.map(value => ({ value, enabled: true }));
+  }
+  return arr;
+}
 
 // Load config from storage
 async function loadConfig() {
   return new Promise((resolve) => {
     chrome.storage.local.get(['enabled', 'domains', 'selectors'], (result) => {
       config.enabled = result.enabled !== false;
-      config.domains = result.domains || [];
-      config.selectors = result.selectors || [];
+      config.domains = migrateToNewFormat(result.domains || []);
+      config.selectors = migrateToNewFormat(result.selectors || []);
       resolve(config);
     });
   });
@@ -59,7 +68,8 @@ function renderDomains() {
   const list = document.getElementById('domainList');
   const count = document.getElementById('domainCount');
   
-  count.textContent = config.domains.length;
+  const enabledCount = config.domains.filter(d => d.enabled).length;
+  count.textContent = `${enabledCount}/${config.domains.length}`;
   
   if (config.domains.length === 0) {
     list.innerHTML = '<div class="empty-state">No domains configured</div>';
@@ -67,8 +77,9 @@ function renderDomains() {
   }
   
   list.innerHTML = config.domains.map((domain, i) => `
-    <div class="item">
-      <span class="item-text" title="${domain}">${domain}</span>
+    <div class="item ${domain.enabled ? '' : 'disabled'}">
+      <button class="item-toggle" data-type="domain" data-index="${i}" title="${domain.enabled ? 'Disable' : 'Enable'}">${domain.enabled ? '✓' : '○'}</button>
+      <span class="item-text" title="${domain.value}">${domain.value}</span>
       <button class="item-delete" data-type="domain" data-index="${i}">×</button>
     </div>
   `).join('');
@@ -79,7 +90,8 @@ function renderSelectors() {
   const list = document.getElementById('selectorList');
   const count = document.getElementById('selectorCount');
   
-  count.textContent = config.selectors.length;
+  const enabledCount = config.selectors.filter(s => s.enabled).length;
+  count.textContent = `${enabledCount}/${config.selectors.length}`;
   
   if (config.selectors.length === 0) {
     list.innerHTML = '<div class="empty-state">No selectors configured</div>';
@@ -87,8 +99,9 @@ function renderSelectors() {
   }
   
   list.innerHTML = config.selectors.map((selector, i) => `
-    <div class="item">
-      <span class="item-text" title="${selector}">${selector}</span>
+    <div class="item ${selector.enabled ? '' : 'disabled'}">
+      <button class="item-toggle" data-type="selector" data-index="${i}" title="${selector.enabled ? 'Disable' : 'Enable'}">${selector.enabled ? '✓' : '○'}</button>
+      <span class="item-text" title="${selector.value}">${selector.value}</span>
       <button class="item-delete" data-type="selector" data-index="${i}">×</button>
     </div>
   `).join('');
@@ -121,12 +134,12 @@ async function addDomain() {
   const value = input.value.trim();
   
   if (!value) return;
-  if (config.domains.includes(value)) {
+  if (config.domains.some(d => d.value === value)) {
     input.value = '';
     return;
   }
   
-  config.domains.push(value);
+  config.domains.push({ value, enabled: true });
   await saveConfig();
   renderDomains();
   input.value = '';
@@ -140,7 +153,7 @@ async function addSelector() {
   const value = input.value.trim();
   
   if (!value) return;
-  if (config.selectors.includes(value)) {
+  if (config.selectors.some(s => s.value === value)) {
     input.value = '';
     return;
   }
@@ -153,11 +166,25 @@ async function addSelector() {
     return;
   }
   
-  config.selectors.push(value);
+  config.selectors.push({ value, enabled: true });
   await saveConfig();
   renderSelectors();
   input.value = '';
   
+  setTimeout(updateStatus, 100);
+}
+
+// Toggle item
+async function toggleItem(type, index) {
+  if (type === 'domain') {
+    config.domains[index].enabled = !config.domains[index].enabled;
+    renderDomains();
+  } else if (type === 'selector') {
+    config.selectors[index].enabled = !config.selectors[index].enabled;
+    renderSelectors();
+  }
+  
+  await saveConfig();
   setTimeout(updateStatus, 100);
 }
 
@@ -204,12 +231,16 @@ async function init() {
     if (e.key === 'Enter') addSelector();
   });
   
-  // Delete button delegation
+  // Button delegation
   document.addEventListener('click', (e) => {
     if (e.target.classList.contains('item-delete')) {
       const type = e.target.dataset.type;
       const index = parseInt(e.target.dataset.index);
       deleteItem(type, index);
+    } else if (e.target.classList.contains('item-toggle')) {
+      const type = e.target.dataset.type;
+      const index = parseInt(e.target.dataset.index);
+      toggleItem(type, index);
     }
   });
   

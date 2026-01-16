@@ -2,13 +2,13 @@
 
 // Default configuration for MIT Mystery Hunt 2025
 const DEFAULT_DOMAINS = [
-  'puzzmon.world',
-  '*.puzzmon.world'
+  { value: 'puzzmon.world', enabled: true },
+  { value: '*.puzzmon.world', enabled: true }
 ];
 
 const DEFAULT_SELECTORS = [
-  '[class*="copy-ribbon"] button',
-  '#guess-history tr td:nth-child(1)'
+  { value: '[class*="copy-ribbon"] button', enabled: true },
+  { value: '#guess-history tr td:nth-child(1)', enabled: true }
 ];
 
 // Initialize default config on install

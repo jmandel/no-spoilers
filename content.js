@@ -38,7 +38,12 @@ let revealedElements = new Set(); // elements user has revealed (don't re-hide)
 // Check if current domain matches any configured domain pattern
 function isDomainMatch() {
   const currentHost = window.location.hostname;
-  return config.domains.some(domain => {
+  return config.domains.some(d => {
+    // Handle both old format (string) and new format ({value, enabled})
+    const domain = typeof d === 'string' ? d : d.value;
+    const enabled = typeof d === 'string' ? true : d.enabled;
+    if (!enabled) return false;
+    
     // Support wildcards like *.example.com
     if (domain.startsWith('*.')) {
       const suffix = domain.slice(1); // .example.com
@@ -109,6 +114,13 @@ function rehideElement(element) {
   hideElement(element);
 }
 
+// Get enabled selectors as array of strings
+function getEnabledSelectors() {
+  return config.selectors
+    .filter(s => typeof s === 'string' ? true : s.enabled)
+    .map(s => typeof s === 'string' ? s : s.value);
+}
+
 // Process all elements matching current selectors
 function processElements() {
   if (!config.enabled || !isDomainMatch()) {
@@ -119,7 +131,8 @@ function processElements() {
     return;
   }
   
-  const selectorString = config.selectors.join(', ');
+  const enabledSelectors = getEnabledSelectors();
+  const selectorString = enabledSelectors.join(', ');
   if (!selectorString) return;
   
   try {
@@ -172,7 +185,9 @@ function hideAll() {
 function updateEarlyHideCSS() {
   let style = document.getElementById('mhsh-early-hide');
   
-  if (!config.enabled || !isDomainMatch() || config.selectors.length === 0) {
+  const enabledSelectors = getEnabledSelectors();
+  
+  if (!config.enabled || !isDomainMatch() || enabledSelectors.length === 0) {
     if (style) style.remove();
     return;
   }
@@ -183,7 +198,7 @@ function updateEarlyHideCSS() {
     (document.head || document.documentElement).appendChild(style);
   }
   
-  style.textContent = config.selectors.map(s => {
+  style.textContent = enabledSelectors.map(s => {
     try {
       document.querySelector(s); // validate
       return `${s} { visibility: hidden !important; }`;
