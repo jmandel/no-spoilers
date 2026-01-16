@@ -44,11 +44,24 @@ function hideElement(element) {
   if (element.closest('.mhsh-overlay')) return; // Don't hide our own overlays
   
   // Store original styles
+  element.dataset.mhshOriginalDisplay = element.style.display || '';
   element.dataset.mhshOriginalVisibility = element.style.visibility || '';
   element.dataset.mhshOriginalPosition = element.style.position || '';
   
-  // Create wrapper if element isn't already relatively positioned
   const computedStyle = window.getComputedStyle(element);
+  const rect = element.getBoundingClientRect();
+  
+  // For small or absolutely positioned elements, just hide completely
+  // (no room for a reveal button anyway)
+  if (rect.width < 100 || rect.height < 30 || 
+      computedStyle.position === 'absolute' || 
+      computedStyle.position === 'fixed') {
+    element.classList.add('mhsh-hidden-simple');
+    hiddenElements.set(element, null); // null = no overlay
+    return;
+  }
+  
+  // Create wrapper if element isn't already relatively positioned
   if (computedStyle.position === 'static') {
     element.style.position = 'relative';
   }
@@ -68,11 +81,13 @@ function revealElement(element) {
   const overlay = hiddenElements.get(element);
   if (overlay) {
     overlay.remove();
-    element.classList.remove('mhsh-hidden');
-    element.style.visibility = element.dataset.mhshOriginalVisibility || '';
-    element.style.position = element.dataset.mhshOriginalPosition || '';
-    hiddenElements.delete(element);
   }
+  element.classList.remove('mhsh-hidden');
+  element.classList.remove('mhsh-hidden-simple');
+  element.style.display = element.dataset.mhshOriginalDisplay || '';
+  element.style.visibility = element.dataset.mhshOriginalVisibility || '';
+  element.style.position = element.dataset.mhshOriginalPosition || '';
+  hiddenElements.delete(element);
 }
 
 // Re-hide a revealed element

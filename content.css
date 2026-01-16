@@ -47,3 +47,8 @@
 .mhsh-reveal-btn:active {
   opacity: 0.7 !important;
 }
+
+/* Simple hide for small/absolute elements - no overlay */
+.mhsh-hidden-simple {
+  display: none !important;
+}
