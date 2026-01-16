@@ -10,6 +10,11 @@
   pointer-events: none !important;
 }
 
+/* Revealed: override early-hide.css (which uses :where for 0 specificity) */
+.mhsh-revealed {
+  opacity: 1 !important;
+}
+
 /* Overlay with reveal button */
 .mhsh-overlay {
   position: absolute !important;
@@ -20,7 +25,7 @@
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  background: rgba(200, 200, 200, 0.9) !important;
+  background: #d0d0d0 !important;
   border-radius: 4px !important;
   min-height: 24px !important;
   min-width: 60px !important;
