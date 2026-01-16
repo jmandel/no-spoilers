@@ -9,7 +9,8 @@
 }
 
 /* Override early-hide.css when element has been revealed */
-.mhsh-revealed {
+.mhsh-revealed,
+.mhsh-revealed * {
   visibility: visible !important;
 }
 
@@ -30,6 +31,10 @@
   visibility: visible !important;
 }
 
+.mhsh-overlay * {
+  visibility: visible !important;
+}
+
 .mhsh-reveal-btn {
   background: #1a1a1a !important;
   color: white !important;
@@ -43,6 +48,7 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
   transition: opacity 0.15s ease !important;
   visibility: visible !important;
+  opacity: 1 !important;
 }
 
 .mhsh-reveal-btn:hover {
