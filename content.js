@@ -7,6 +7,7 @@ let config = {
 };
 
 let hiddenElements = new Map(); // element -> overlay
+let revealedElements = new Set(); // elements user has revealed (don't re-hide)
 
 // Check if current domain matches any configured domain pattern
 function isDomainMatch() {
@@ -41,25 +42,13 @@ function createOverlay(element) {
 // Hide an element and add overlay
 function hideElement(element) {
   if (hiddenElements.has(element)) return;
+  if (revealedElements.has(element)) return; // User already revealed this
   if (element.closest('.mhsh-overlay')) return; // Don't hide our own overlays
   
   // Store original styles
-  element.dataset.mhshOriginalDisplay = element.style.display || '';
-  element.dataset.mhshOriginalVisibility = element.style.visibility || '';
   element.dataset.mhshOriginalPosition = element.style.position || '';
   
   const computedStyle = window.getComputedStyle(element);
-  const rect = element.getBoundingClientRect();
-  
-  // For small or absolutely positioned elements, just hide completely
-  // (no room for a reveal button anyway)
-  if (rect.width < 100 || rect.height < 30 || 
-      computedStyle.position === 'absolute' || 
-      computedStyle.position === 'fixed') {
-    element.classList.add('mhsh-hidden-simple');
-    hiddenElements.set(element, null); // null = no overlay
-    return;
-  }
   
   // Create wrapper if element isn't already relatively positioned
   if (computedStyle.position === 'static') {
@@ -76,18 +65,16 @@ function hideElement(element) {
   hiddenElements.set(element, overlay);
 }
 
-// Reveal a hidden element
+// Reveal a hidden element (permanently until page reload)
 function revealElement(element) {
   const overlay = hiddenElements.get(element);
   if (overlay) {
     overlay.remove();
   }
   element.classList.remove('mhsh-hidden');
-  element.classList.remove('mhsh-hidden-simple');
-  element.style.display = element.dataset.mhshOriginalDisplay || '';
-  element.style.visibility = element.dataset.mhshOriginalVisibility || '';
   element.style.position = element.dataset.mhshOriginalPosition || '';
   hiddenElements.delete(element);
+  revealedElements.add(element); // Remember this was revealed
 }
 
 // Re-hide a revealed element
@@ -144,6 +131,11 @@ function revealAll() {
   });
 }
 
+// Clear revealed set (allow re-hiding)
+function resetRevealed() {
+  revealedElements.clear();
+}
+
 // Re-hide all (re-process)
 function hideAll() {
   processElements();
@@ -193,6 +185,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     revealAll();
     sendResponse({ success: true });
   } else if (message.action === 'hideAll') {
+    resetRevealed();
     hideAll();
     sendResponse({ success: true });
   } else if (message.action === 'getStatus') {
