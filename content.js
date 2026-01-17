@@ -5,7 +5,8 @@ const DEFAULT_DOMAINS = ['puzzmon.world', '*.puzzmon.world'];
 const DEFAULT_SELECTORS = [
   '[class*="copy-ribbon"] button',
   '#guess-history tr td:nth-child(1)',
-  '.ml-2'
+  '.ml-2',
+  '.font-mono.text-base.text-green-600'
 ];
 
 // Hide page immediately on matching domains
@@ -181,18 +182,34 @@ function hideAll() {
   processElements();
 }
 
-// MutationObserver for dynamic content
+// MutationObserver for dynamic content - must be fast to avoid flicker
 let observer = null;
 function setupObserver() {
   if (observer) observer.disconnect();
   
+  const selectors = getEnabledSelectors(config.selectors);
+  const selectorString = selectors.length > 0 ? selectors.join(', ') : null;
+  
   observer = new MutationObserver((mutations) => {
-    if (!config.enabled || !isDomainMatch()) return;
+    if (!config.enabled || !isDomainMatch() || !selectorString) return;
     
-    clearTimeout(observer.timeout);
-    observer.timeout = setTimeout(() => {
-      processElements();
-    }, 100);
+    // Check new nodes immediately (no debounce) to prevent flicker
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes) {
+        if (node.nodeType !== 1) continue; // skip text nodes
+        
+        // Check if node itself matches
+        if (node.matches && node.matches(selectorString)) {
+          hideElement(node);
+        }
+        
+        // Check descendants
+        if (node.querySelectorAll) {
+          const matches = node.querySelectorAll(selectorString);
+          matches.forEach(el => hideElement(el));
+        }
+      }
+    }
   });
   
   observer.observe(document.documentElement, {
