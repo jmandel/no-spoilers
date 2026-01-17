@@ -1,0 +1,172 @@
+name: Build and Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Create Chrome zip
+        run: |
+          mkdir -p dist
+          zip -r dist/no-spoilers-chrome.zip . \
+            -x '.git/*' -x '.github/*' -x 'dist/*' -x 'docs/*' -x '*.md'
+      
+      - name: Create Firefox version
+        run: |
+          mkdir -p firefox-build
+          cp content.js content.css popup.html popup.js background.js early-hide.css firefox-build/
+          cp -r icons firefox-build/
+          
+          # Create Firefox manifest (v2)
+          cat > firefox-build/manifest.json << 'EOF'
+          {
+            "manifest_version": 2,
+            "name": "No Spoilers",
+            "version": "1.0.0",
+            "description": "Hide page elements until you're ready to see them",
+            "permissions": [
+              "storage",
+              "activeTab",
+              "<all_urls>"
+            ],
+            "browser_action": {
+              "default_popup": "popup.html",
+              "default_icon": {
+                "16": "icons/icon16.png",
+                "48": "icons/icon48.png",
+                "128": "icons/icon128.png"
+              }
+            },
+            "background": {
+              "scripts": ["background.js"]
+            },
+            "content_scripts": [
+              {
+                "matches": ["*://*.puzzmon.world/*", "*://puzzmon.world/*"],
+                "css": ["early-hide.css"],
+                "run_at": "document_start"
+              },
+              {
+                "matches": ["<all_urls>"],
+                "js": ["content.js"],
+                "css": ["content.css"],
+                "run_at": "document_start"
+              }
+            ],
+            "icons": {
+              "16": "icons/icon16.png",
+              "48": "icons/icon48.png",
+              "128": "icons/icon128.png"
+            }
+          }
+          EOF
+          
+          # Add browser API compatibility
+          for f in firefox-build/content.js firefox-build/popup.js firefox-build/background.js; do
+            sed -i '1i// Firefox/Chrome compatibility\nconst browser = globalThis.browser || globalThis.chrome;' "$f"
+            sed -i 's/chrome\./browser./g' "$f"
+          done
+          
+          cd firefox-build && zip -r ../dist/no-spoilers-firefox.zip .
+      
+      - name: Create landing page
+        run: |
+          cat > dist/index.html << 'HTMLEOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <title>No Spoilers - Download</title>
+            <style>
+              body { font-family: -apple-system, system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; }
+              h1 { font-size: 24px; margin-bottom: 24px; }
+              .tabs { display: flex; gap: 0; margin-bottom: 0; }
+              .tab { padding: 12px 24px; background: #e8e8e8; border: 1px solid #ccc; border-bottom: none; cursor: pointer; font-size: 15px; color: #666; border-radius: 8px 8px 0 0; margin-right: 4px; }
+              .tab:hover { background: #f0f0f0; }
+              .tab.active { background: white; color: #1a1a1a; font-weight: 600; border-color: #ccc; position: relative; }
+              .tab.active::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; background: white; }
+              .tab-content { display: none; background: white; padding: 24px; border: 1px solid #ccc; border-radius: 0 8px 8px 8px; }
+              .tab-content.active { display: block; }
+              .download-btn { display: inline-flex; align-items: center; gap: 8px; background: #1a1a1a; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; margin-bottom: 24px; font-size: 16px; font-weight: 500; }
+              .download-btn:hover { background: #333; }
+              .download-btn::before { content: '↓'; font-size: 18px; }
+              .step { background: #f5f5f5; padding: 12px 16px; border-radius: 8px; margin: 10px 0; }
+              .step-num { display: inline-block; width: 24px; height: 24px; background: #1a1a1a; color: white; border-radius: 50%; text-align: center; line-height: 24px; margin-right: 8px; font-size: 14px; }
+              code { background: #e0e0e0; padding: 2px 6px; border-radius: 3px; cursor: pointer; }
+              code:hover { background: #ccc; }
+              .note { font-size: 13px; color: #666; margin-top: 16px; }
+            </style>
+          </head>
+          <body>
+            <h1>🙈 No Spoilers</h1>
+            
+            <div class="tabs">
+              <button class="tab active" onclick="showTab('chrome')">Chrome / Edge</button>
+              <button class="tab" onclick="showTab('firefox')">Firefox</button>
+            </div>
+            
+            <div id="chrome" class="tab-content active">
+              <a class="download-btn" href="no-spoilers-chrome.zip">Download for Chrome / Edge</a>
+              <div class="step"><span class="step-num">1</span>Unzip the downloaded file</div>
+              <div class="step"><span class="step-num">2</span>Go to <code onclick="copyText('chrome://extensions', this)">chrome://extensions</code></div>
+              <div class="step"><span class="step-num">3</span>Enable <b>Developer mode</b> (toggle, top right)</div>
+              <div class="step"><span class="step-num">4</span>Click <b>Load unpacked</b> → select the unzipped folder</div>
+            </div>
+            
+            <div id="firefox" class="tab-content">
+              <a class="download-btn" href="no-spoilers-firefox.zip">Download for Firefox</a>
+              <div class="step"><span class="step-num">1</span>Unzip the downloaded file</div>
+              <div class="step"><span class="step-num">2</span>Go to <code onclick="copyText('about:debugging#/runtime/this-firefox', this)">about:debugging#/runtime/this-firefox</code></div>
+              <div class="step"><span class="step-num">3</span>Click <b>Load Temporary Add-on</b></div>
+              <div class="step"><span class="step-num">4</span>Select <b>manifest.json</b> from the unzipped folder</div>
+              <div class="note">⚠️ Firefox temporary add-ons are removed on browser restart. Re-load after restarting.</div>
+            </div>
+            
+            <script>
+              function showTab(id) {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+                event.target.classList.add('active');
+                document.getElementById(id).classList.add('active');
+              }
+              function copyText(text, el) {
+                navigator.clipboard.writeText(text);
+                const orig = el.textContent;
+                el.textContent = 'Copied!';
+                setTimeout(() => el.textContent = orig, 1000);
+              }
+            </script>
+          </body>
+          </html>
+          HTMLEOF
+      
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
