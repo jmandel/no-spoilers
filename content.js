@@ -166,6 +166,33 @@ function setupObserver() {
   });
 }
 
+// Update dynamic hide CSS when selectors change
+function updateDynamicHideCSS() {
+  let style = document.getElementById('mhsh-dynamic-hide');
+  
+  if (!config.enabled || !isDomainMatch()) {
+    if (style) style.remove();
+    return;
+  }
+  
+  const selectors = getEnabledSelectors(config.selectors);
+  if (selectors.length === 0) {
+    if (style) style.remove();
+    return;
+  }
+  
+  if (!style) {
+    style = document.createElement('style');
+    style.id = 'mhsh-dynamic-hide';
+    document.head.appendChild(style);
+  }
+  
+  // Hide all matching elements until JS processes them
+  style.textContent = selectors.map(s => 
+    `${s}:not(.mhsh-spoiler):not(.mhsh-revealed) { opacity: 0 !important; }`
+  ).join('\n');
+}
+
 // Listen for config changes
 chrome.storage.onChanged.addListener((changes, namespace) => {
   if (namespace !== 'local') return;
@@ -179,6 +206,9 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
   if (changes.selectors !== undefined) {
     config.selectors = changes.selectors.newValue || [];
   }
+  
+  // Update CSS immediately for new selectors
+  updateDynamicHideCSS();
   
   revealAll();
   revealedElements.clear();
@@ -210,6 +240,9 @@ function init() {
     config.enabled = result.enabled !== false;
     config.domains = result.domains || DEFAULT_DOMAINS;
     config.selectors = result.selectors || DEFAULT_SELECTORS;
+    
+    // Inject dynamic CSS for user selectors
+    updateDynamicHideCSS();
     
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => {
