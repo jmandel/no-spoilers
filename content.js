@@ -129,20 +129,44 @@ function hideElement(element) {
   overlays.set(element, overlay);
 }
 
-// Reveal an element
+// Reveal an element - must unhide via inline style (can't modify CSS rule)
 function revealElement(element) {
   const overlay = overlays.get(element);
   if (overlay) {
     overlay.remove();
     overlays.delete(element);
   }
-  // Track by reference, don't touch the element at all
   revealedElements.add(element);
+  // Override the CSS hide with inline style
+  element.style.setProperty('visibility', 'visible', 'important');
 }
 
-// No-op - we don't use dynamic CSS hiding anymore
-// The overlay itself visually hides the content
-function updateHideCSS() {}
+// Inject CSS to hide matching elements permanently (overlay reveals by covering)
+function updateHideCSS() {
+  let style = document.getElementById('mhsh-hide-css');
+  
+  if (!config.enabled || !isDomainMatch()) {
+    if (style) style.remove();
+    return;
+  }
+  
+  const selectors = getEnabledSelectors(config.selectors);
+  if (selectors.length === 0) {
+    if (style) style.remove();
+    return;
+  }
+  
+  if (!style) {
+    style = document.createElement('style');
+    style.id = 'mhsh-hide-css';
+    (document.head || document.documentElement).appendChild(style);
+  }
+  
+  // Always hide matching elements - reveal button removes from this list
+  style.textContent = selectors.map(s => 
+    `${s} { visibility: hidden !important; }`
+  ).join('\n');
+}
 
 // Process elements - find and hide matching ones
 function processElements() {
@@ -280,6 +304,9 @@ function init() {
     config.enabled = result.enabled !== false;
     config.domains = result.domains || DEFAULT_DOMAINS;
     config.selectors = result.selectors || DEFAULT_SELECTORS;
+    
+    // Inject hide CSS immediately (before DOM ready) to catch dynamic elements
+    updateHideCSS();
     
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => {
