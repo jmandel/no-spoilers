@@ -4,7 +4,8 @@
 const DEFAULT_DOMAINS = ['puzzmon.world', '*.puzzmon.world'];
 const DEFAULT_SELECTORS = [
   '[class*="copy-ribbon"] button',
-  '#guess-history tr td:nth-child(1)'
+  '#guess-history tr td:nth-child(1)',
+  '.ml-2'
 ];
 
 // Check domain match synchronously

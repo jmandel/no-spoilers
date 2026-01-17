@@ -1,6 +1,7 @@
 /* Injected by manifest - hides default spoilers before JS loads */
 /* Using :where() for zero specificity - easily overridden by .mhsh-revealed */
 :where([class*="copy-ribbon"] button),
-:where(#guess-history tr td:nth-child(1)) {
+:where(#guess-history tr td:nth-child(1)),
+:where(.ml-2) {
   opacity: 0 !important;
 }

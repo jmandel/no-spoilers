@@ -8,7 +8,8 @@ const DEFAULT_DOMAINS = [
 
 const DEFAULT_SELECTORS = [
   { value: '[class*="copy-ribbon"] button', enabled: true },
-  { value: '#guess-history tr td:nth-child(1)', enabled: true }
+  { value: '#guess-history tr td:nth-child(1)', enabled: true },
+  { value: '.ml-2', enabled: true }
 ];
 
 // Initialize default config on install
